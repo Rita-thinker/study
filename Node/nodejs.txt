@@ -1,0 +1,256 @@
+NGINX（带有异步I/O的事件轮询，能处理更多的请求和客户端连接）和Apache（带有阻塞I/O的多线程方式），都是HTTP服务器
+
+HTTP发送消息，用新的TCP/IP连接（开关需要时间），每次请求发送HTTP头（数据量大）
+因此用Socket.IO库提供实时通讯：
+            WebSocket（支持实时通讯，双向通信协议）
+            给不兼容的HTML5（即不能使用WebSocket的浏览器）一些措施
+
+npm init
+npm install
+node server.js
+
+文件server.js：提供静态文件
+var http  = require("http");    //node内置http模块：提供http服务器和客户端的功能
+var mime  = require('mime');    //设置HTTP头的文件类型
+
+var path  = require("path");    //提供与文件系统路径相关的功能
+var fs    = require('fs');      
+
+var cache = {};                 // 缓存文件内容对象
+
+var server = http.createServer(function (request, response) {       //创建HTTP服务器
+    var filePath = false;
+    if(request.url == '/'){
+        filePath = 'public/index.html' 
+    } else {
+        filePath = 'public' + request.url;
+    }
+
+    var absPath = './' +filePath;
+    serverStatic(response,cache,absPath);
+});
+
+function serverStatic(response,cache,absPath){
+    if(cache[absPath]){
+        sendFile(response,absPath,cache[absPath]);         //从内存中返回文件
+    } else {
+        fs.exists(absPath,function(exists){                   //传入文件absPath，返回参数exists
+            if(exists){                                     //文件存在于文件系统
+                fs.readFile(absPath,function(err,data){
+                    if(err){
+                        send404(response);
+                    } else {
+                        cache[absPath] =data;
+                        sendFile(response,absPath,data);
+                    }
+                });
+            } else{
+                send404(response);
+            }
+        });
+    }
+}
+
+function sendFile(response,filePath,fielContents){
+    response.writeHead( 200, {'content-type':mime.lookup(path.basename(filePath))});
+    response.end(fielContents);
+}
+
+function send404(response){
+    response.writeHead(404,{'content-type':'text/plain'});
+    response.write("Error 404: resource not found");       //将响应数据写到socket中
+    response.end();              //结束这个响应
+}
+
+server.listen(3000,function(){                      //启动HTTP服务器，服务器监听的端口
+    console.log('Server listenting on port 3000');    
+})
+
+//注：一个Node HTTP服务器实例就是一个事件发射器server，一个可以继承、能够添加事件发射及处理能力的类
+
+var chatServer = require('./chat_server');   //加载定制的Node模块（处理基于Socket.IO的服务端功能）
+chatServer.listen(server);          //启动Socket.IO服务器，与HTTP服务器共享同一个TCP/IP端口
+
+文件chat_server.js：
+var socketio = require('socket.io');
+var io;
+
+export.listen = function(server){
+    io = socketio.listen(server);          //启动Socket.IO服务器，允许它搭载在已有的HTTP服务器上
+    io.set('log level',1);                 //限定Socket.IO向控制台输出的日志的详细程度
+    io.sockets.on('connection',function(socket){
+        //定义处理逻辑
+    })
+}
+
+
+实战：构建RESTful Web服务
+var http = require('http');
+var url  = require('url');
+var items= [];
+
+var server = http.createServer(function(req,res){
+    switch(req.method){
+        case 'POST':        //用POST请求创建资源
+        var item='';
+        req.setEncoding('utf8');       //将data数据编码为utf字符串
+        req.on('data',function(chunk){     //Node的HTTP解析器读入并解析请求数据时，触发data事件，解析好的数据块buffer（默认字节数组，即二进制数据）放入其中
+            item +=chunk;     //将数据块拼接成完整字符串
+        });
+        req.on('end',function(){    //请求事件结束后
+            items.push(item);        //字符串缓存
+            res.end('OK\n');         //结束响应
+        });
+        break;
+        case 'GET':        //用GET请求获取资源
+        var body = items.map(function(item,i){    //items.forEach(function(item,i){res.write(item+'\n')});res.end();
+            return i + ')' +item;
+        }).join('\n');
+        //提高响应速度
+        res.setHeader('Content-Length',Buffer.byteLength(body));    //字节长度，body.length字符长度
+        res.setHeader('Content-Type','text/plain ; charset="utf-8"');
+        res.end(body)
+        break;
+        case 'GET':        //用DELETE请求移除资源
+        var path = url.parse(req.url).pathname;   //解析url
+        var i = parseInt(path.slice(1),10);   //slice( para1 ),会截取从para1开始的到原数组最后的部分，转换为数字
+        if(isNaN(i)){
+            res.statusCode=400;
+            res.end('Invalid item id');
+        } else if(!item[i]){
+            res.statusCode=400;
+            res.end('Invalid item id');
+        } else{
+            items.splice(i,1);    //删除从i开始的1项，会改变数组length
+            res.end('OK\n');
+        }
+        break;
+    }
+})
+
+使用cURL:代替Web浏览器与Web服务交互，可以向目标服务器发送请求
+ curl -d 'buy groceries' http://localhost:3000   //-d 默认为POST  在浏览器http://localhost:3000进行操作，目标服务器监听着http://localhost:3000，可以进行数据交互
+     OK
+ curl http://localhost:3000          //不带任何选型，默认GET
+     0）buy groceries
+
+
+__dirname  该文件所在的绝对路径
+
+Node的querystring模块
+（parse是将一个字符串反序列化为一个对象）
+querystring.parse("name=whitemu&sex=man&sex=women");
+return:
+   { name: 'whitemu', sex: [ 'man', 'women' ] }
+
+表单提交请求的Content-Type值：
+application/x-www-form-urlencoded    //HTML表单的默认值
+multipart/form-data                  //在表单中含有文件或非ASCII或非二进制数据时使用
+
+用formidable处理上传的文件(默认放在/tmp目录下)
+<form method='post' action='/' enctype='multipart/form-data'>       //适用于BLOB（大型二进制文件）的MIME类型
+var formidable = require('formidable');
+function upload(req,res){
+    is(!isFormData(req)){
+        res.statusCode = 400;
+        res.end(‘cuo’);
+        return;
+     }
+     var form = new formidable.IncomingForm();  //确定是文件上传请求后，初始化新的表单
+     //封装接口：出错，则传入err;若无错，则传入后面两个对象
+     form.parse(req,function(err,field,files){    //form.on('field',function(field,value){})
+     console.log(fields);   //以键值对的形式{name:'my'},收完输入域后发生此事件
+     res.end('complete');    
+})
+}
+
+计算上传进度：
+form.on('process',function(bytesReceived,byteExpected){       //收到的字节数，期望收到的字节数
+    var percent = Math.floor(bytesReceived/byteExpected*100);
+    console.log(percent);     //进度条
+})
+
+function isFormData(req){
+     var type = req.headers['content-type'] || '';
+     return 0==type.indexOf('multipart/form-data');    //检查请求头中的content-type字段，断言值以'multipart/form-data’开头
+     //indexOf() 方法可返回某个指定的字符串值在字符串中首次出现的位置。
+}
+
+HTTPS服务器的配置
+var options={
+   key   :fs.readFileSync('./keypem');    //SSL密钥：使用OpenSSL生成
+   cert  :fs.readFileSync('./key-cert.pem');    //证书，含公钥
+}
+https.createServer(options,function(req,res){})
+
+关系型数据库：  MySQL
+NoSQL数据库 ：  MongoDB
+（1）cmd进入mongdb/bin: 
+       mongod --dbpath "C:\data\db"     //开启mongodb服务，可以选择设置windows服务自启
+（2）打开mongdb/bin/mongo.exe  查看创建好的数据库
+       show dbs
+       use XXX
+       show tables
+
+（3）文件form_server.js:
+var MongoClient = require('mongodb').MongoClient;
+var url = "mongodb://localhost:27017/";
+MongoClient.connect(url, function(err, db) {
+    if (err) throw err;
+    var dbo = db.db("runoob");    //创建数据库
+    var myobj =  [
+        { name: '菜鸟工具', url: 'https://c.runoob.com', type: 'cn'},
+        { name: 'Google', url: 'https://www.google.com', type: 'en'},
+        { name: 'Facebook', url: 'https://www.google.com', type: 'en'}
+       ];
+       //创建集合
+    dbo.collection("site").insertMany(myobj, function(err, res) {
+        if (err) throw err;
+        console.log("插入的文档数量为: " + res.insertedCount);
+        db.close();
+    });
+});
+
+打开git-bash.exe:
+       cnpm install mongodb
+       node form_server.js
+
+
+Connect（第三方工具）是中间件的模块化组件
+1、用自身的分派器依次调用依附的中间件组件
+var connect = require('connect'); 
+
+function logger(req ,res , next){                //做日志的中间件:记录进入服务器的请求方法和URL
+   console.log('%s %s' ,req.method ,req.url);
+   next();                //回调函数：告诉分派器已完成自己的任务，可以将控制权交给下一个中间件组件
+}
+
+function hello(req ,res){
+   res.setHeader('Content-Type','text/plain');
+   res.end('hello world');
+}
+
+ connect()
+.use(logger)    //服务器先调用logger
+.use(hello)     //用hello world 响应HTTP请求
+.listen(3000);   
+
+2、挂载:给中间件或程序定义一个路径前缀（若挂载到/blog上，则/article/1的req.url通过客户端访问就是/blog/article/1）
+ connect()
+.use('/admin' ,logger)    //当第一个参数是字符串时，只有URL前缀与之匹配，connect才会调用后面的中间件 (connect自动匹配/admin) 
+.use('/admin' ,hello)     
+.listen(3000);  
+
+通过挂载，不用修改程序代码就可以让其URL从http://foo.com/blog迁移到http://bar.com/posts，因为connect会去掉req.url的前缀部分
+
+
+把项目部署在本地服务器
+（1）win+R打开控制台，输入node -v命令查看是否安装成功
+（2）npm install anywhere -g
+（3）win+R打开控制台，进入项目所在的文件夹,输入anywhere命令
+    此时电脑默认浏览器会打开你的文件夹，这时候你的项目就部署在服务器端了
+    可以把控制台中出现的网址复制给在同一局域网的同事，也可以发送到手机端查看了，
+
+并且在本地修改你的代码服务器会自动更新。
+
+

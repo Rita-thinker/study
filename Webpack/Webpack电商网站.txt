@@ -1,0 +1,637 @@
+nodeJS 10.12.0（npm>6.0版本才能安装cnpm npm6.4.1）
+webpack@1.13.2  （2.x与IE8不兼容）
+
+总结：
+按软件版本号搜索
+在github找源文件
+
+1、安装nodejs
+单线程、异步编程
+命令行测试：node -v
+
+2、安装git
+分布式管理控制系统
+打开 git bash
+
+3、搭建git仓库
+使用远程服务器oschina（邮箱+密码 Rita 个性域名:https://gitee.com/Rita-thinker）
+
+git clone+ssh地址  //从远程地址下载代码
+
+4.1、配置ssh key(达到无密码登录，http需要密码)
+设置Git的username 和email  git config --global user.name ''            //guoyunting
+                           git config --global user.email ''            
+查看是否有ssh密钥  cd ~/.ssh （有则删）
+生成密钥  ssh-keygen -t rsa -C '2996055610@qq.com'
+查看公钥  cat ~/.ssh/id-rsa.pub  （id-rsa私钥）
+部署公钥管理--->添加个人公钥
+
+4.2、将服务器上文件夹下载到本地（不需密码登录）  git clone +SSH地址
+此时文件下载至本地目录，且此目录与远程git仓库关联
+
+若本地目录没有与远程仓库关联：
+初始化当前文件夹（mall-fe）的git  git init
+将当前文件夹与远程仓库关联        git remote add origin +SSH地址
+将远程分支代码拉下来              git pull origin master
+查看当前状态          git status
+追踪文件              git add .
+将当前改动提交并注释       git commit -am 'test'（文件test.html没有提交）
+将本地文件推送到远程服务器 git push
+   当前分支并未设置远程对应分支 git push --set-upstream origin master
+
+5、配置gitignore文件
+在本地文件夹（mall-fe）配置规则（被匹配的文件不会被追踪） vim .gitignore
+                 /node_modules/  
+                 /dist/   (目标文件)
+6、将此分支重新提交，即提交gitignore文件
+git status
+git add .
+git commit -am 'first initial'
+git push
+git push --set-upstream origin master //有显示，则输出
+
+7、显示所有文件（包含.开头的隐藏文件）   ls -al
+
+注：一般，master主要作为只读分支，新建分支进行开发
+新建分支并切换  git checkout -b(分支未使用) mmall_v1.0
+查看分支   git branch
+注：因当前master分支（mmall_v1.0）为空，所以提交前未执行git merge origin master（以后每次提交前要执行一次）
+    方便找某个分支的提交 git tag tag-dev-initial
+                         git push origin tag-dev-initial
+      
+                       
+8、在分支mmall_v1.0上进行开发
+mkdir src
+cd src/
+(包含page页面、view脚本样式、service数据层、util工具层、image)
+
+注：git只追踪文件及其副目录，无视文件夹
+
+9、使用npm（nodejs的包管理工具）加载依赖包
+npm初始化   npm init  (生成package.json，包含npm配置内容)
+安装依赖包  npm install （生成node_modules文件夹）
+
+10、安装webpack
+重装nodeJS（npm>6.0版本才能安装cnpm）
+安装cnpm这个淘宝镜像 npm install -g（全局安装）cnpm --registry=http://registry.npm.taobao.org（指定npm源地址）
+npm install --registry=https://registry.npm.taobao.org
+
+全局安装webpack    cnpm install -g webpack@1.13.2  （2.x与IE8不兼容）
+安装本地webpack项目依赖    cnpm install --save-dev webpack@1.13.2  (防止部署的环境与本地依赖包版本不一致；然后，生成node_modules，中有webpack文件夹)
+
+
+用什么loader支持对以下文件类型的加载
+html:html-webpack-plugin/html-loader
+js:babel-loader+babel-preset-es2015（Webpack本身就支持对js的加载）
+css:style-loader（将解析后的样式嵌入js代码，等待加载）+css-loader（用于解析CSS文件）
+image+font:url-loader
+
+11.1、实现模块打包
+./src/page/index/cats.js
+    cats=["dog","monkey"]
+    module.exports=cats
+./src/page/index/index.js
+    cats=require("./cats.js")
+    console.log(cats)
+（1）webpack ./src/page/index/index.js源文件 ./dist/app.js目标文件 （webpack -p可压缩文件）
+（2）设置webpack.config.js读取文件参数，实现高级打包
+
+11.2、设置webpack.config.js
+module.exports ={
+        entry:"./src/page/index/index.js",
+        output:{
+             path:"./dist",
+             filename:"app.js"   
+}
+};
+命令行：webpack
+
+解决以下问题：
+（1）若entry中有多个js
+（2）output要分文件夹存放目标文件
+
+var config ={
+        entry:{
+            'index' : ["./src/page/index/index.js"],      //（1）key:key值
+            'login' : ["./src/page/login/index.js"],
+        },
+        output:{
+             path:"./dist",
+             filename:"js/[name].js"   //（2）防止文件覆盖，[name].js支持按照源文件的名（key）打包到目标文件下
+        },
+        externals :{                  //加载外部变量/模块，若需要以模块化方式引入JQuery
+             'jquery' :"window.jQuery"    
+        }
+};
+
+module.exports = config;
+
+（3）引入JQuery
+HTML文件中：
+<body>
+    <script type="text/javascript" src="https://cdn.bootcss.com/jquery/1.12.3/jquery.min.js"></script>
+    <script type="text/javascript" src="../../dist/js/index.js"></script>
+</body>
+
+3.1被打包的index.js文件中：
+$('body').html("HELLO INDEX");
+
+3.2若需要以模块化方式引入JQuery
+配置webpack.config.js
+var config ={
+    externals :{                  
+         'jquery' :"window.jQuery"    //加载外部变量/模块的部分
+    }
+};
+被打包的index.js文件中：
+var $$=require("jquery");
+$$('body').html("HELLO INDEX");
+
+（4）提取entry文件的公共模块
+4.1使用组件CommonChunkPlugin，配置webpack.config.js
+var webpack =require("webpack");
+var config ={
+    entry:{
+        'index' : ["./src/page/index/index.js"],     
+        'login' : ["./src/page/login/index.js"],
+    },
+    output:{
+         path:"./dist",
+         filename:"js/[name].js"  
+    },
+    externals :{                  
+         'jquery' :"window.jQuery"  
+    },
+    plugins: [
+        new webpack.optimize.CommonsChunkPlugin({
+              name : "commons",         //文件名,指默认打包entry中所有文件都依赖的部分;若name:['commons','login']，即打包除login外的文件
+              filename : "js/base.js"    //公共模块的输出文件，置于/dist/js/base.js
+           }),
+   ]
+};
+
+4.2全局模块处理通用的样式，避免在每个文件中require
+var webpack =require("webpack");
+var config ={
+    entry:{
+        'common' : ["./src/page/common/index.js"],  //此文件为全局模块
+        'index' : ["./src/page/index/index.js"],     
+        'login' : ["./src/page/login/index.js"],
+    },
+    output:{
+         path:"./dist",
+         filename:"js/[name].js"  
+    },
+    externals :{                  
+         'jquery' :"window.jQuery"  
+    },
+    plugins: [
+        new webpack.optimize.CommonsChunkPlugin({
+              name : "common",      //将文件common内容放入base.js这个通用文件中，不单独生成common.js
+              filename : "js/base.js"
+           }),
+   ]
+};
+
+12、Webpack对CSS样式的处理
+文件"./src/page/index/index.js"
+      require("./index.css");   //模块化引入样式文件
+      require("../module.js");
+安装对应loader       cnpm install css-loader style-loader --save-dev
+配置webpack.config.js  
+var webpack =require("webpack");
+var config ={
+    entry:{
+        'common' : ["./src/page/common/index.js"],  
+        'index' : ["./src/page/index/index.js"],     
+        'login' : ["./src/page/login/index.js"],
+    },
+    output:{
+         path:"./dist",
+         filename:"js/[name].js"  
+    },
+    externals :{                  
+         'jquery' :"window.jQuery"  
+    },
+    module: {
+        loaders:[
+            {
+                test : /\.css$/,
+                loaders : ['style-loader','css-loader']       //探测test到以css为后缀的文件，使用loader
+            }
+        ]
+    },
+    plugins: [
+        new webpack.optimize.CommonsChunkPlugin({
+              name : "common",      
+              filename : "js/base.js"
+           }),
+   ]
+};
+此时，"./src/page/index/index.js"的打包文件中存在字符串形式的css样式内容
+
+存在问题：用js加载的css，需等js运行完成后，开始加载css，存在样式空白期，使html混乱，因此需要将样式文件单独打包到css文件，link引入
+安装插件extract-text-webpack-plugin（npm3以上不再自动找依赖，搜索该插件的版本历史）
+cnpm install extract-text-webpack-plugin@1.0.1 --save-dev
+配置webpack.config.js  
+var webpack           = require("webpack");
+var ExtractTextPlugin = require('extract-text-webpack-plugin');
+var config ={
+    entry:{
+        'common' : ["./src/page/common/index.js"],  
+        'index' : ["./src/page/index/index.js"],     
+        'login' : ["./src/page/login/index.js"],
+    },
+    output:{
+         path:"./dist",
+         filename:"js/[name].js"  
+    },
+    externals :{                  
+         'jquery' :"window.jQuery"  
+    },
+    module: {
+        loaders:[
+            {
+                test : /\.css$/,
+                loader : ExtractTextPlugin.extract('style-loader','css-loader')      //使用插件将loader转换
+            }
+        ]
+    },
+    plugins: [
+        new webpack.optimize.CommonsChunkPlugin({
+              name : "common",      
+              filename : "js/base.js"
+           }),
+        new ExtractTextPlugin("css/[name].css"),     //打包生成CSS文件
+   ]
+};
+
+13.1、webpack对html文件的处理（简化html文件的创建）
+安装插件html-webpack-plugin
+cnpm install html-webpack-plugin --save-dev
+配置webpack.config.js  
+var webpack           = require("webpack");
+var ExtractTextPlugin = require('extract-text-webpack-plugin');
+var HtmlWebpackPlugin = require('html-webpack-plugin');
+
+var config ={
+    entry:{
+        'common' : ["./src/page/common/index.js"],  
+        'index' : ["./src/page/index/index.js"],     
+        'login' : ["./src/page/login/index.js"],
+    },
+    output:{
+         path:"./dist",
+         filename:"js/[name].js"  
+    },
+    externals :{                  
+         'jquery' :"window.jQuery"  
+    },
+    module: {
+        loaders:[
+            {
+                test : /\.css$/,
+                loader : ExtractTextPlugin.extract('style-loader','css-loader')
+            }
+        ]
+    },
+    plugins: [  
+        //独立通用模块到js/base.js
+        new webpack.optimize.CommonsChunkPlugin({
+              name : "common",      
+              filename : "js/base.js"
+           }),
+        //把css单独打包到文件里
+        new ExtractTextPlugin("css/[name].css"),
+        //对html模板的处理
+        new HtmlWebpackPlugin({
+            template : './src/view/index.html',  //HTML原始模板
+            filename : 'view/index.html',        //目标文件，以path为根目录
+            inject   : true,     //所有js资源插入到body元素的底部
+            hash     : true,      //为注入的js静态资源添加webpack每次编译产生的唯一hash值,如src="common.js?a3e1396b501cdd9041be"
+            chunks   : ['common','index']    //entry中需要的被打包后的模块[通用模块，index模块]
+        })
+   ]
+};
+
+13.2、封装函数，对html文件进行批量处理（简化html文件的创建）
+var webpack           = require("webpack");
+var ExtractTextPlugin = require('extract-text-webpack-plugin');
+var HtmlWebpackPlugin = require('html-webpack-plugin');
+
+//获取html-webpack-plugin参数的方法
+var getHtmlConfig =function(name){
+    return {
+        template : './src/view/' + name + '.html', 
+        filename : 'view/' + name + '.html',      
+        inject   : true,    
+        hash     : true,     
+        chunks   : ['common',name]   
+    }
+};
+//webpack config
+var config ={
+    entry:{
+        'common' : ["./src/page/common/index.js"],  
+        'index' : ["./src/page/index/index.js"],     
+        'login' : ["./src/page/login/index.js"],
+    },
+    output:{
+         path:"./dist",
+         filename:"js/[name].js"  
+    },
+    externals :{                  
+         'jquery' :"window.jQuery"  
+    },
+    module: {
+        loaders:[
+            {
+                test : /\.css$/,
+                loader : ExtractTextPlugin.extract('style-loader','css-loader')
+            }
+        ]
+    },
+    plugins: [  
+        //独立通用模块到js/base.js
+        new webpack.optimize.CommonsChunkPlugin({
+              name : "common",      
+              filename : "js/base.js"
+           }),
+        //把css单独打包到文件里
+        new ExtractTextPlugin("css/[name].css"),
+        //对html模板的处理
+        new HtmlWebpackPlugin(getHtmlConfig('index')),
+        new HtmlWebpackPlugin(getHtmlConfig('login')),
+   ]
+};
+
+13.3、Webpack对html文件的处理
+安装对应loader    cnpm install html-loader --save-dev
+文件‘./layout/html-head.html’
+      <head>
+          <meta charset="UTF-8">
+      </head>
+文件"./src/view/index.html"插入通用部分   
+      <%= require('html-loader!./layout/html-head.html') %>
+
+14、Webpack对图片和字体的处理
+安装对应loader    cnpm install file-loader --save-dev（url-loader是对file-loader的进一步封装）
+配置webpack.config.js 
+var webpack           = require("webpack");
+var ExtractTextPlugin = require('extract-text-webpack-plugin');
+var HtmlWebpackPlugin = require('html-webpack-plugin');
+
+//获取html-webpack-plugin参数的方法
+var getHtmlConfig =function(name){
+    return {
+        template : './src/view/' + name + '.html', 
+        filename : 'view/' + name + '.html',      
+        inject   : true,    
+        hash     : true,     
+        chunks   : ['common',name]   
+    }
+};
+//webpack config
+var config ={
+    entry:{
+        'common' : ["./src/page/common/index.js"],  
+        'index' : ["./src/page/index/index.js"],     
+        'login' : ["./src/page/login/index.js"],
+    },
+    output:{
+         path:"./dist",
+         filename:"js/[name].js"  
+    },
+    externals :{                  
+         'jquery' :"window.jQuery"  
+    },
+    module: {
+        loaders:[
+            {
+                test : /\.css$/,
+                loader : ExtractTextPlugin.extract('style-loader','css-loader')
+            },
+            {
+                test : /\.(gif|png|jpg)\??.*$/,     //处理字体，则为/\.(woff|svg|eot|ttf)\??.*$/
+                loader : 'file-loader?name=resource/[name].[ext]'    //原为options:{limit:100,name:'resource/[name].[ext]'得不到期待的结果，遂改；limit限制大小，超过100以文件形式，小于100以字节形式；[ext]保留扩展名}
+            }
+        ]
+    },
+
+    plugins: [  
+        //独立通用模块到js/base.js
+        new webpack.optimize.CommonsChunkPlugin({
+              name : "common",      
+              filename : "js/base.js"
+           }),
+        //把css单独打包到文件里
+        new ExtractTextPlugin("css/[name].css"),
+        //对html模板的处理
+        new HtmlWebpackPlugin(getHtmlConfig('index')),
+        new HtmlWebpackPlugin(getHtmlConfig('login')),
+   ]
+};
+
+15、前端开发神器webpack-dev-server（监听文件改变，自动刷新浏览器，是一个小型的Node.js Express服务器）
+安装  cnpm install webpack-dev-server@1.16.5 --save-dev
+若要在命令行用，还需全局安装  cnpm install webpack-dev-server@1.16.5 -g
+启动   webpack-dev-server
+  （1）报错getaddrinfo enoent localhost
+       解决C:\windows\system32\drivers\etc添加一行 127.0.0.1  localhost
+重新启动   webpack-dev-server  
+   成功后，提供的地址为 http://localhost:8080/webpack-dev-server/，浏览器打开
+webpack-dev-server默认以iframe方式启动：页面放在iframe中,当发生改变时重载，有样式调试冲突，iframe文件的变化不会显示在url中
+使用inline方式启动webpack-dev-server：将webpack-dev-sever的客户端入口添加到包(bundle)中
+配置webpack.config.js 
+entry:{
+        'common' : ["./src/page/common/index.js",'webpack-dev-server/client?http://localhost:8088/'],  
+        'index' : ["./src/page/index/index.js"],     
+        'login' : ["./src/page/login/index.js"],
+    },
+命令行重新启动  webpack-dev-server --inline --port 8088
+      浏览器打开http://localhost:8080
+   （2）出错：更改html文件并保存,浏览器没有自动刷新
+        解决：查看源代码，<script type="text/javascript" src="../js/base.js?8d1fa1ed6fabb9878d95"></script>的src是../开头，publicPath默认是/，两者不匹配
+        修改webpack.config.js
+                   output:{
+                         path:"./dist",       //存放文件的路径
+                         publicPath:"/dist",       //访问文件的路径：相对域名localhost：8088来说
+                         filename:"js/[name].js"  
+                   },
+        命令行重新启动  webpack-dev-server --inline --port 8088
+        浏览器打开http://localhost:8080
+
+优化：配置环境变量 
+'webpack-dev-server/client?http://localhost:8088/'对线上环境没有作用，仅是开发时工具，但会被一起打包
+配置webpack.config.js 
+var webpack           = require("webpack");
+var ExtractTextPlugin = require('extract-text-webpack-plugin');
+var HtmlWebpackPlugin = require('html-webpack-plugin');
+
+//环境变量配置  dev开发 / online 线上环境
+var WEBPACK_ENV      = process.env.WEBPACK_ENV  || 'dev'   //容错，默认dev
+
+//获取html-webpack-plugin参数的方法
+var getHtmlConfig =function(name){
+    return {
+        template : './src/view/' + name + '.html', 
+        filename : 'view/' + name + '.html',      
+        inject   : true,    
+        hash     : true,     
+        chunks   : ['common',name]   
+    }
+};
+//webpack config
+var config ={
+    entry:{
+        'common' : ["./src/page/common/index.js"],  
+        'index' : ["./src/page/index/index.js"],     
+        'login' : ["./src/page/login/index.js"],
+    },
+    output:{
+         path:"./dist",      
+         publicPath: "/dist", 
+         filename:"js/[name].js"  
+    },
+    externals :{                  
+         'jquery' :"window.jQuery"  
+    },
+    module: {
+        loaders:[
+            {
+                test : /\.css$/,
+                loader : ExtractTextPlugin.extract('style-loader','css-loader')
+            },
+            {
+                test : /\.(gif|png|jpg)\??.*$/,
+                loader : 'file-loader?name=resource/[name].[ext]'  
+            }
+        ]
+    },
+
+    plugins: [  
+        //独立通用模块到js/base.js
+        new webpack.optimize.CommonsChunkPlugin({
+              name : "common",      
+              filename : "js/base.js"
+           }),
+        //把css单独打包到文件里
+        new ExtractTextPlugin("css/[name].css"),
+        //对html模板的处理
+        new HtmlWebpackPlugin(getHtmlConfig('index')),
+        new HtmlWebpackPlugin(getHtmlConfig('login')),
+   ]
+};
+
+if('dev'===WEBPACK_ENV){
+    config.entry.common.push('webpack-dev-server/client?http://localhost:8088/');
+}
+命令行  set WEBPACK_ENV=dev && webpack-dev-server --inline --port 8088
+
+优化：简化命令行命令
+package.json中的"scripts"段可以用npm执行一些脚本和命令
+配置package.json
+  "scripts": {        
+    "dev": "WEBPACK_ENV=dev webpack-dev-server --inline --port 8088",
+    "dev_win": "set WEBPACK_ENV=dev && webpack-dev-server --inline --port 8088",
+    "dist": "WEBPACK_ENV=online webpack-dev-server --inline --port 8088",  //打包命令
+    "dist_win": "set WEBPACK_ENV=online && webpack-dev-server --inline --port 8088"
+  },
+
+命令行  npm run dev_win
+
+16、通用js工具封装src/util/mm.js
+模板渲染工具----hogan（webpack打包的模板，植入性还没有，但需要用js来渲染动态数据）
+（1）网络请求
+文件index.js
+var __mm = require("util/mm.js");
+__mm.request({
+    url : 'http://happymmall.com/product/list.do?keyword=1',    //此接口有返回值
+    success : function(res){
+        console.log(res);
+    },
+    error : function(errMsg){
+        console.log(errMsg);
+    },
+})
+报错：访问域名localhost：8088，请求http://happymmall.com/product/list.do?keyword=1，存在跨域问题
+解决：
+    文件index.js    url : '/product/list.do?keyword=1',
+    Fiddler         EXACT:http://localhost:8088/product/list.do?keyword=1
+        match to    http://happymmall.com/product/list.do?keyword=1
+   
+（2）获取url参数
+文件index.js
+console.log(__mm.getUrlParam('test'));
+访问http://localhost:8088/dist/view/index.html           输出为null
+访问http://localhost:8088/dist/view/index.html?test=123  输出为123 
+
+（3）渲染html模板
+安装组件 cnpm install hogan --save  //应用于代码
+文件index.js
+var html = '<div>{{data}}</div>';
+var data = {
+    data : 123456
+}
+console.log(__mm.renderHtml(html,data));
+
+安装图标库(只是css文件)
+cnpm install font-awesome --save
+使用时  require('node_modules/font-awesome/css/font-awesome.min.css');
+配置webpack.config.js
+alias  :{
+            node_modules :    __dirname + '/node_modules',
+            util         :    __dirname + '/src/util',   
+            page         :    __dirname + '/src/page',
+            service      :    __dirname + '/src/service',
+            image        :    __dirname + '/src/image',
+        }
+报错：有非法的字符,需要安装相应的loader
+解决： {
+          test : /\.(gif|jpg|png|woff|svg|eot|ttf)\??.*$/,     //将字体的后缀加入file-loader的配置
+          loader : 'file-loader?name=resource/[name].[ext]'  
+       }
+
+注：
+每次修改都要保存，直接按save可能没用
+每次修改webpack.config.js，都要npm run dev_win
+.nav .user.login{    //.user.login指同一个元素
+    display: none;
+}
+
+
+在result.html
+//使用htmlWebpackPlugin向页面传参
+<title><%= htmlWebpackPlugin.options.title%>————happymmall电商平台</title>
+
+用户登录部分
+提交用户名、密码：
+使用Fiddler做代理
+    Fiddler         EXACT:http://localhost:8088/user/login.do
+        match to    http://www.happymmall.com/user/login.do
+
+
+
+出错：msg(用户未登录,无法获取当前用户的信息)
+      登录成功，但是无法加载用户信息
+
+解决：经调试(console.log或)发现，是后端的问题，触发了reject函数
+
+将user-service.js中的getUserInfo : function(resolve,reject)改为
+getUserInfo : function(reject,resolve)后，可以触发resolve函数，页面发生改变，但没有的加载信息，仅作为调试
+
+
+html代码中引入图片，只能通过require方式
+如：src="<%= require('../image/floor/floor1-2.jpg') %>"
+
+
+Unslider – 轻量的响应式 jQuery 内容轮播插件(查看官网操作http://www.bootcss.com/p/unslider/)
+需要引入JQuery（已有）和Unslider
+Wepack是模块化的，不想通过全局的方式引入Unslider，可以将文件Unslider的内容下载下来，保存在程序中，此处只作为内容的引用unslider.js，不作为插件
+
+
+报错：在banner.string中，无法找到图片
+解决：引用问题，应该用绝对路径，而不是相对路径image/banner/banner1.jpg，因为用html-loader无法处理
+      <a href="./list.html?categoryId=100021" target="_blank">
+            <img class="banner-img" src="../../image/banner/banner1.jpg" />
+      </a>

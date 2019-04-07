@@ -1,0 +1,90 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <link rel="stylesheet" href="../node_modules/bootstrap/dist/css/bootstrap.css">
+    <!-- <script type="text/javascript" src="jquery.js"></script>
+     -->
+     <script src="https://cdn.staticfile.org/jquery/1.10.2/jquery.min.js">
+     </script>
+</head>
+<body>
+    <div id="msg"></div>
+    <button class="btn btn-danger" id="sendGet">发送get请求</button>
+    <button class="btn btn-danger" id="sendPost">发送post请求</button>
+    <!-- 还有发送get/post请求的sendAll -->
+
+    <!-- 路由传参：get请求 -->
+    <button class="btn btn-danger" id="sendD">发送get,路由传参</button>
+
+    <!--表单方式传参,\要进行封装 -->
+    <button class="btn btn-danger" id="sendE">发送post,body传参</button>        
+
+ 
+     <script>
+
+    $("#sendE").click(function(){
+        $.ajax({             
+              url:"/d" ,      
+              type:"post",          //表单方式传参是post,一般加密方式
+              data:{name:"tom",age:100},       //对象形式传到服务端
+              success:function(data){      
+                if(data.success)
+                {
+                   alert(data.msg);
+                }else{
+                    alert(data.msg);
+                }
+              }
+          })
+      });
+
+
+      $("#sendD").click(function(){
+        $.ajax({             
+              url:"/c/1" ,      //传参100
+              type:"get",          //路由传参是get
+              success:function(data){      
+                if(data.success)
+                {
+                    $("#msg").append("姓名：="+data.obj.name+"年龄：="+data.obj.age);
+                }else{
+                    $("#msg").append(data.msg);
+                }
+              }
+          })
+      });
+
+
+      $("#sendGet").click(function(event){
+          $.ajax({              //发送ajax请求
+              url:"/a" ,  //请求服务器的路径
+              type:"get",
+              success:function(data){       //请求成功，即返回响应的数据
+                // alert(data);
+                // $("#msg").append("姓名：="+data.name+"年龄：="+data.age);
+                if(data.success)
+                {
+                    $("#msg").append("姓名：="+data.obj.name+"年龄：="+data.obj.age);
+                }
+              }
+          })
+      });
+
+       $("#sendPost").click(function(event){
+          $.ajax({
+              url:"/a" , 
+              type:"post",
+              success:function(data){       
+                $("#msg").append(data);
+              }
+          })
+      });
+       
+     </script>
+</body>
+</html>
