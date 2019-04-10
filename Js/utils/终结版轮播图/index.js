@@ -27,10 +27,16 @@
         var lNum , rNum;
         for(var i=0; i<hLen; i++){
             lNum = self.curDisplay -i -1;
+            if(lNum > self.imgLen-1){
+                lNum = lNum-self.imgLen
+            }
             self.$img.eq(lNum).css({
                 transform : 'translateX(' + (-150*(i+1)) + 'px) translateZ(' + (200 - i * 100) + 'px) rotateY(30deg)'
             })
             rNum = self.curDisplay +i +1;
+            if(rNum > self.imgLen-1){
+                rNum = rNum-self.imgLen
+            }
             self.$img.eq(rNum).css({
                 transform : 'translateX(' + (150*(i+1)) + 'px) translateZ(' + (200 - i * 100) + 'px) rotateY(-30deg)'
             })
